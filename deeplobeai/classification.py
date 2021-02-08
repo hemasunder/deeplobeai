@@ -36,8 +36,9 @@ def process_data(dirr):
     return sorted(os.listdir(os.path.join(dirr,"Train/"))),len(os.listdir(os.path.join(dirr,"Train/")))
         
 
-class load_data(pl.LightningDataModule):
-    def __init__(self,root_dir,batch_size):
+
+class loading_data(pl.LightningDataModule):
+    def __init__(self,root_dir):
         super().__init__()
         
         self.root_dir = root_dir
@@ -47,13 +48,14 @@ class load_data(pl.LightningDataModule):
                                transforms.ToTensor(),
                                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
                                ])
-        self.batch_size = batch_size
+        self.batch_size = 16
+        self.setup()
         
     def setup(self):
         self.train_set = datasets.ImageFolder(os.path.join(self.root_dir,'Train/'),transform= self.transform)
         self.test_set = datasets.ImageFolder(os.path.join(self.root_dir,'Test/'),transform = self.transform)
         self.val_set = datasets.ImageFolder(os.path.join(self.root_dir,'Val/'),transform = self.transform)
-        
+         
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size = self.batch_size, shuffle = True)
     
@@ -62,7 +64,11 @@ class load_data(pl.LightningDataModule):
     
     def val_dataloader(self):
         return DataLoader(self.val_set,batch_size= self.batch_size, shuffle = False)
-        
+
+
+def load_data(dataset):
+    labels,classes =  process_data(dataset)
+    return loading_data(dataset),labels,classes
                 
 def build_model(model,modelname,classes):
 	if modelname in ['resnet','inception','googlenet']:
@@ -80,14 +86,17 @@ def build_model(model,modelname,classes):
 	return model
 
 
-class Classficationmodel(pl.LightningModule):
-    def __init__(self,model,criterion,optim,lr):
+class Classificationmodel(pl.LightningModule):
+    def __init__(self,classes):
         super().__init__()
+        self.save_hyperparameters()
         
-        self.model = model
-        self.criterion = criterion
-        self.optim = optim
-        self.lr = lr
+        self.model = models.resnet18(pretrained = True)
+        self.classes = classes
+        self.model = build_model(self.model,'resnet',self.classes)
+        
+        self.criterion = torch.nn.CrossEntropyLoss()
+        self.lr = 0.001
     
     def forward(self,x):
         output = self.model(x)
@@ -113,17 +122,30 @@ class Classficationmodel(pl.LightningModule):
         self.log("test_loss",loss)
 
     def configure_optimizers(self):
-        if self.optim.lower() == 'sgd':
-            optimizer = torch.optim.SGD(self.parameters(),lr = self.lr)
-        if self.optim.lower() == 'adam':
-        	optimizer = torch.optim.Adam(self.parameters(),lr = self.lr)
+        #if self.optim.lower() == 'sgd':
+        optimizer = torch.optim.SGD(self.parameters(),lr = self.lr)
+        #if self.optim.lower() == 'adam':
+        #	optimizer = torch.optim.Adam(self.parameters(),lr = self.lr)
         return optimizer
         
-def predict(img,labels):
+def fit(data,classes,folderpath):
+	model = Classificationmodel(classes)
+	print(model)
+	print("model training started")
+	trainer = pl.Trainer(max_epochs = 1,default_root_dir = folderpath)
+	trainer.fit(model,data)
+	print("testing the model now")
+	trainer.test()
+
+
+def predict(img,labels,folderpath):
     img = Image.open(img).convert('RGB')
     transform = transforms.Compose([transforms.Resize((224,224)),
                            transforms.ToTensor()])
     t_img = transform(img).unsqueeze(0)
+    #model = Classificationmodel(classes)
+    model = Classificationmodel.load_from_checkpoint(folderpath)
+    model.eval()
     out = model(t_img)
     _,pred = out.max(1)
     return pred,labels[pred.item()]
