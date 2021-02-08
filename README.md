@@ -4,30 +4,20 @@
 ### installation
 `pip install deeplobeai/`
 
+#### The below dependencies installed automatically
+- pytorch== 1.4.0
+- pytorch-lightning==1.1.7
+- PIL == 7.0.0
+- torchvision==0.5.0
 
-Sample classfication code
+### Sample classfication code
 
 ```
 import deeplobeai
-import torch
-import pytorch_lightning as pl
 from deeplobeai import classification
 
-labels,classes = classification.process_data('Test') ###path to the dataset
-### data set should have folder inside with class names
+data,labels,classes = classification.load_data('Test') 
+classification.fit(data,classes,'Test') #model checkpoint saved to Test
 
-data = classification.load_data('Test',batch_size = 16)
-data.prepare_data()
-data.setup()
-
-from torchvision import models
-network = models.resnet18(pretrained = True)
-model = classification.build_model(network,'resnet',classes)
-
-criterion = torch.nn.CrossEntropyLoss()
-model = classification.Classficationmodel(model,criterion,'adam',lr = 1e-3)
-
-trainer = pl.Trainer(max_epochs=1)
-trainer.fit(model,data)
-trainer.test()
+classification.predict('Test/12.jpg',labels,'Checkpoint/path/to/file.ckpt')
 ```
