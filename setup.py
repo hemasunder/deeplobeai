@@ -19,4 +19,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    install_requires = [
+    "torch==1.4.0",
+    "pytorch-lightning==1.1.7",
+    "PIL == 7.0.0",
+    "torchvision==0.5.0"],
 )
