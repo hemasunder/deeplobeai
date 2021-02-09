@@ -1,7 +1,7 @@
 # deeplobeai
 
 
-### installation
+### 1.installation
 `pip install deeplobeai/`
 
 #### The below dependencies installed automatically
@@ -10,7 +10,7 @@
 - PIL == 7.0.0
 - torchvision==0.5.0
 
-### Sample classfication code
+### 2.Sample classfication code
 
 ```
 import deeplobeai
