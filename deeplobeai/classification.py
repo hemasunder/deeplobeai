@@ -125,17 +125,17 @@ class Classificationmodel(pl.LightningModule):
         #	optimizer = torch.optim.Adam(self.parameters(),lr = self.lr)
         return optimizer
 
-class CL():
+class Classification():
     def load_data(self,dataset):
         self.dataset = dataset
         (self.labels,self.classes),self.data = process_data(dataset),loading_data(dataset) 
         print(self.labels, self.classes, self.data)
     
-    def train(self):
+    def train(self,epochs = 2):
         model = Classificationmodel(self.classes)
         print("model training started")
         self.checkpoint_callback = ModelCheckpoint(monitor = 'val_loss',dirpath = self.dataset)
-        trainer = pl.Trainer(max_epochs = 1,default_root_dir = self.dataset,callbacks = [self.checkpoint_callback])
+        trainer = pl.Trainer(max_epochs = epochs,default_root_dir = self.dataset,callbacks = [self.checkpoint_callback])
         trainer.fit(model,self.data)
         print("testing the model now")
         trainer.test()

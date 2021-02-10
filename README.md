@@ -14,10 +14,10 @@
 
 ```
 import deeplobeai
-from deeplobeai import classification
+from deeplobeai.classification import Classification
 
-cl_obj = classification.CL()
-cl_obj.load_data('Dataset)
-cl_obj.train()
-cl_obj.predict('sampleimg')
+cl_model = Classification()
+cl_model.load_data('Dataset)
+cl_model.train() #cl_model.train(epochs = 10) for more training
+cl_model.predict('sampleimage')
 ```
