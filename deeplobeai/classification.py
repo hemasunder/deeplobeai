@@ -8,6 +8,8 @@ from torchvision import transforms,models
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+
 import warnings
 warnings.filterwarnings('ignore')
 from PIL import Image
@@ -35,7 +37,6 @@ def process_data(dirr):
         print("Done one",label)
     return sorted(os.listdir(os.path.join(dirr,"Train/"))),len(os.listdir(os.path.join(dirr,"Train/")))
         
-
 
 class loading_data(pl.LightningDataModule):
     def __init__(self,root_dir):
@@ -65,25 +66,21 @@ class loading_data(pl.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val_set,batch_size= self.batch_size, shuffle = False)
 
-
-def load_data(dataset):
-    labels,classes =  process_data(dataset)
-    return loading_data(dataset),labels,classes
                 
 def build_model(model,modelname,classes):
-	if modelname in ['resnet','inception','googlenet']:
-		infeatures = model.fc.in_features
-		model.fc = nn.Linear(infeatures,classes)
-	if modelname in ['vggnet','alexnet']:
-		infeatures = model.classifier[6].in_features
-		model.classifier[6] = nn.Linear(infeatures,classes)
-	if modelname in ['mobilenet']:
-		infeatures = model.classifier[1].in_features
-		model.classifier[1] = nn.Linear(infeatures,classes)
-	if modelname in ['densenet']:
-		infeatures = model.classifier.in_features
-		model.classifier = nn.Linear(infeatures,classes)
-	return model
+    if modelname in ['resnet','inception','googlenet']:
+        infeatures = model.fc.in_features
+        model.fc = nn.Linear(infeatures,classes)
+    if modelname in ['vggnet','alexnet']:
+        infeatures = model.classifier[6].in_features
+        model.classifier[6] = nn.Linear(infeatures,classes)
+    if modelname in ['mobilenet']:
+        infeatures = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(infeatures,classes)
+    if modelname in ['densenet']:
+        infeatures = model.classifier.in_features
+        model.classifier = nn.Linear(infeatures,classes)
+    return model
 
 
 class Classificationmodel(pl.LightningModule):
@@ -127,25 +124,30 @@ class Classificationmodel(pl.LightningModule):
         #if self.optim.lower() == 'adam':
         #	optimizer = torch.optim.Adam(self.parameters(),lr = self.lr)
         return optimizer
-        
-def fit(data,classes,folderpath):
-	model = Classificationmodel(classes)
-	print(model)
-	print("model training started")
-	trainer = pl.Trainer(max_epochs = 1,default_root_dir = folderpath)
-	trainer.fit(model,data)
-	print("testing the model now")
-	trainer.test()
 
+class CL():
+    def load_data(self,dataset):
+        self.dataset = dataset
+        (self.labels,self.classes),self.data = process_data(dataset),loading_data(dataset) 
+        print(self.labels, self.classes, self.data)
+    
+    def train(self):
+        model = Classificationmodel(self.classes)
+        print("model training started")
+        self.checkpoint_callback = ModelCheckpoint(monitor = 'val_loss',dirpath = self.dataset)
+        trainer = pl.Trainer(max_epochs = 1,default_root_dir = self.dataset,callbacks = [self.checkpoint_callback])
+        trainer.fit(model,self.data)
+        print("testing the model now")
+        trainer.test()
 
-def predict(img,labels,folderpath):
-    img = Image.open(img).convert('RGB')
-    transform = transforms.Compose([transforms.Resize((224,224)),
+    def predict(self,img):
+        img = Image.open(img).convert('RGB')
+        transform = transforms.Compose([transforms.Resize((224,224)),
                            transforms.ToTensor()])
-    t_img = transform(img).unsqueeze(0)
-    #model = Classificationmodel(classes)
-    model = Classificationmodel.load_from_checkpoint(folderpath)
-    model.eval()
-    out = model(t_img)
-    _,pred = out.max(1)
-    return pred,labels[pred.item()]
+        t_img = transform(img).unsqueeze(0)
+        self.path= self.checkpoint_callback.best_model_path
+        model = Classificationmodel.load_from_checkpoint(self.path)
+        model.eval()
+        out = model(t_img)
+        _,pred = out.max(1)
+        return pred,self.labels[pred.item()]

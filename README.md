@@ -16,8 +16,8 @@
 import deeplobeai
 from deeplobeai import classification
 
-data,labels,classes = classification.load_data('Test') 
-classification.fit(data,classes,'Test') #model checkpoint saved to Test
-
-classification.predict('Test/12.jpg',labels,'Checkpoint/path/to/file.ckpt')
+cl_obj = classification.CL()
+cl_obj.load_data('Dataset)
+cl_obj.train()
+cl_obj.predict('sampleimg')
 ```
